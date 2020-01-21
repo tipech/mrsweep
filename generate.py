@@ -6,11 +6,11 @@ from overlapGraph.slig.datastructs import Region,RegionSet,RIGraph,Interval
 gen = RegionGenerator(dimension=2)
 
 # regular json file
-# gen.store_regionset(10000, "data/sample.json")
+# gen.store_regionset(1000, "data/sample.json")
 
 # spark-specific jsonl file
 with open("data/sample.jsonl", "w") as outfile:
-  for region in gen.get_regionset(10000):
+  for region in gen.get_regionset(1000):
     json.dump(region.to_dict(), outfile)
     outfile.write("\n")
 

@@ -36,6 +36,7 @@ def rangefunction(x, split_points):
 	return result
 	
 
+
 def SweepLine(key):
 	SweepLinePoints= key[1]
 	SweepLinePoints.sort()
@@ -50,7 +51,7 @@ def SweepLine(key):
 				
 				# if you want to save the intersections, then uncomment the line below, but make sure to give enough memory for the workers, or write the output to a file.
 				# we are using list created inside the mapper to store all intersections; not rdds, therefore, there is a limit on the number of intersections we can save in memory, before we need to write them out to a file.
-				#result.append(((SweepLinePoints[i],SweepLinePoints[k]),overlap))
+				yield ((SweepLinePoints[i],SweepLinePoints[k]),overlap)
 				
 				#except ValueError:
 					#print(SweepLinePoints[i])
@@ -63,6 +64,8 @@ def SweepLine(key):
 def CaluclateRangeOverlap(point1, point2):
 	return ( max(point1[0],point2[0]), min(point1[1],point2[1]))
 	
+
+
 
 def check_Rdd_equality(rdd1,rdd2):
 	rdd1= rdd1.collectAsMap()
