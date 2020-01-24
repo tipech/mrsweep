@@ -7,9 +7,9 @@ from pprint import pprint
 
 # ==== Execution Parameters ====
 
-sample_fraction = 0.01  # 10% of 10000 = 100
-num_partitions = 50
-algorithm = "sweep_line" # options: sweep_line,scan_line
+sample_fraction = 0.1  # 10% of 1000 = 100
+num_partitions = 2
+algorithm = "scan_line" # options: sweep_line,scan_line
 
 
 # ==== Setup ====
@@ -30,6 +30,8 @@ spark.sparkContext.setLogLevel("ERROR")
 # regions = spark.read.json("hdfs:///user/mahmoud2/data/sample.jsonl").rdd
 regions = spark.read.json("file:///app/data/sample.jsonl").rdd
 
+# accumulator for partition duplication
+extras = spark.sparkContext.accumulator(0)
 
 # ==== Sampling ====
 
@@ -87,6 +89,7 @@ dim_regions = regions.flatMap(split_dimensions)
 def partition(pair):
   region_id, interval = pair
   part_intervals = []
+  count = 0
 
   # for each partition, find objects that start in, end in, or cross over it
   for part_nr, part in enumerate(part_points[interval['d']]):
@@ -95,6 +98,10 @@ def partition(pair):
       or (interval['lower'] < part[0] and interval['upper'] > part[1])):
 
       part_intervals.append(("%d_%d"%(part_nr, interval['d']), interval))
+      count += 1
+
+  # add number of extra copies of this region
+  extras.add(count-1)
 
   # return (partition_ID, interval) pairs
   return part_intervals
@@ -191,12 +198,17 @@ intersects = dim_intersects.mapValues(merge).values().filter(lambda x: x)
 
 # ==== Store/Print Results ====
 
+print(intersects.count())
+
 # convert to jsonl format and save to file
-jsonl_intersects = intersects.map(json.dumps)
+# jsonl_intersects = intersects.map(json.dumps)
 # jsonl_intersects.saveAsTextFile("file:///app/data/result")
 
 # collect as list, sort (and print or save to file for comparison)
-result = list(sorted(jsonl_intersects.collect()))
-pprint(result[:10])
+# result = list(sorted(jsonl_intersects.collect()))
+# pprint(result[:10])
 # with open("test.txt", "w+") as file:
-#   file.write(str(result))
+  # file.write(str(result))
+
+# print number of duplicates
+print(extras)
