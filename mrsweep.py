@@ -8,8 +8,8 @@ from pprint import pprint
 # ==== Execution Parameters ====
 
 sample_fraction = 0.1  # 10% of 1000 = 100
-num_partitions = 2
-algorithm = "scan_line" # options: sweep_line,scan_line
+num_partitions = 1
+algorithm = "sweep_line" # options: sweep_line,scan_line
 
 
 # ==== Setup ====
