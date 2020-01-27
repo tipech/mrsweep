@@ -130,7 +130,8 @@ def sweep_line(pair):
     # interval just started, it intersects all actives
     else:
       for active_id, active in actives.items():
-        inter_id = "%s_%s"%(active['original'], interval['original'])
+        ids = list(sorted([active['original'], interval['original']]))
+        inter_id = "%s_%s" % (ids[0], ids[1])
         yield (inter_id, {"id": inter_id,
               "lower": max(active['lower'], interval['lower']),
               "upper": min(active['upper'], interval['upper']),
@@ -161,7 +162,8 @@ def scan_line(pair):
 
       # new interval intersects current
       if intervals[i]['upper'] > intervals[k]['lower']:
-        inter_id = "%s_%s"%(intervals[i]['original'],intervals[k]['original'])
+        ids =list(sorted([intervals[i]['original'],intervals[k]['original']]))
+        inter_id = "%s_%s" % (ids[0], ids[1])
         yield (inter_id, {"id": inter_id,
               "lower": max(intervals[i]['lower'], intervals[k]['lower']),
               "upper": min(intervals[i]['upper'], intervals[k]['upper']),
@@ -174,6 +176,7 @@ def scan_line(pair):
 # apply scan line algorithm
 if algorithm == "scan_line":
   dim_intersects = sorted_regions.flatMap(scan_line).groupByKey()
+
 
 # ==== Merge intersections ====
 

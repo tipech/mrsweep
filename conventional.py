@@ -8,8 +8,7 @@ from pprint import pprint
 # ==== Execution Parameters ====
 
 sample_fraction = 0.1  # 10% of 1000 = 100
-num_partitions = 1
-
+num_partitions = 10
 
 # ==== Setup ====
 
@@ -68,7 +67,7 @@ regions = regions.map(lambda x: (x.id, x))
 def partition(pair):
   region_id, region = pair
   partitions = [[]]
-
+  
   # go through partition points in every dimension
   for d, points in part_points.items():
     new_partitions = []
@@ -85,8 +84,12 @@ def partition(pair):
         for combination in partitions:
           new_partitions.append(combination + [str(i)])
 
+
     # replace lower dimension partitions with current dimension combinations
     partitions = new_partitions
+
+    # add number of extra copies of this region
+    extras.add(len(partitions)-1)
 
   # partition id's are their index combinations per dimension
   return (('_'.join(part), region) for part in partitions)
@@ -117,11 +120,12 @@ def sweep_line(pair):
     else:
       for active_id, active in actives.items():
         d=1
-        while(d < region.dimension and intersects(region, active, d)):
+        while(d < region.dimension and overlaps(region, active, d)):
           d+=1
 
         if d == region.dimension:
-          inter_id = "%s_%s"%(region.id, active.id)
+          ids =list(sorted([region.id, active.id]))
+          inter_id = "%s_%s" % (ids[0], ids[1])
 
           yield (inter_id, {"id": inter_id, "factors": [
             (max(region.factors[i][0], active.factors[i][0]), 
@@ -132,71 +136,27 @@ def sweep_line(pair):
       actives[region.id] = region
 
 
-def intersects(region, other, d):
+def overlaps(region, other, d):
   # check if two regions intersect in specified dimension
 
   this_f = region.factors[d]
   other_f = other.factors[d]
-  return ( (this_f[0] >= other_f[0] and this_f[0] <= other_f[1])
-        or (this_f[1] >= other_f[0] and this_f[1] <= other_f[1])
-        or (this_f[0] < other_f[0] and this_f[1] > other_f[1]) )
+  return ( (this_f.lower >= other_f.lower and this_f.lower <= other_f.upper)
+        or (this_f.upper >= other_f.lower and this_f.upper <= other_f.upper)
+        or (this_f.lower < other_f.lower and this_f.upper > other_f.upper) )
 
 
 # apply sweep line algorithm
-intersects = part_regions.flatMap(sweep_line).groupByKey()
+part_intersects = part_regions.flatMap(sweep_line).groupByKey()
 
+# Eliminate duplicates from partitioning
+intersects = part_intersects.mapValues(lambda x: list(x)[0])
+
+print(part_intersects.count())
 print(intersects.count())
 
-
-# # ==== Execute Scan Line ====
-
-# # sort same-partition intervals by start coord
-# sorted_regions = part_regions.mapValues(
-#   lambda x: sorted(x, key=lambda i:i['lower']))
-
-# # perform the scan line loop, emit resulting intersection pairs
-# def scan_line(pair):
-#   part_id, intervals = pair
-
-#   # go through intervals sequentially
-#   for i in range(len(intervals)):
-#     for k in range(i+1,len(intervals)):
-
-#       # new interval intersects current
-#       if intervals[i]['upper'] > intervals[k]['lower']:
-#         inter_id = "%s_%s"%(intervals[i]['original'],intervals[k]['original'])
-#         yield (inter_id, {"id": inter_id,
-#               "lower": max(intervals[i]['lower'], intervals[k]['lower']),
-#               "upper": min(intervals[i]['upper'], intervals[k]['upper']),
-#               "d": intervals[i]['d']})
-
-#       # no new intervals intersect current one, move on
-#       else:
-#         break
-
-# # apply scan line algorithm
-# if algorithm == "scan_line":
-#   dim_intersects = sorted_regions.flatMap(scan_line).groupByKey()
-
-# # ==== Merge intersections ====
-
-# # Find intersections that overlap in all dimensions
-# def merge(intervals):
-
-#   # remove duplicates made during partitioning by converting to dictionary
-#   factors = {i['d']: i for i in intervals}
-
-#   # mark those intersecting in fewer dimensions
-#   if len(factors) < nr_dims:
-#     return False
-
-#   # construct finalized intersections
-#   return {"id": factors[0]['id'],
-#           "lower": [i['lower'] for i in factors.values()],
-#           "upper": [i['upper'] for i in factors.values()]}
-
-# # apply reducer faction
-# intersects = dim_intersects.mapValues(merge).values().filter(lambda x: x)
+# print number of duplicates
+print(extras)
 
 
 # # ==== Store/Print Results ====
@@ -210,3 +170,4 @@ print(intersects.count())
 # pprint(result[:10])
 # # with open("test.txt", "w+") as file:
 # #   file.write(str(result))
+
