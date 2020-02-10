@@ -39,7 +39,7 @@ sample = regions.sample(False, sample_fraction).collect()
 nr_dims = sample[0].dimension
 
 # setup to partition points in each dimension
-part_size  = len(sample)/num_partitions
+part_size  = len(sample)/(num_partitions-1)
 part_points = {} # in each dimension
 
 # split to dimensions, get and sort by region center points in each
@@ -51,11 +51,15 @@ for d in range(nr_dims):
   # split sample to partitions
   part_points[d] = []
   previous_point = 0
-  for i in range(num_partitions-1):
+  for i in range(1, num_partitions-1):
     next_point = sample_points[int(part_size*i)]
     part_points[d].append((previous_point, next_point))
     previous_point = next_point
   part_points[d].append((previous_point, 1000))
+
+
+# get the number of total partitions produced
+total_partitions = num_partitions ** nr_dims
 
 
 # ==== Split data to partitions ====
@@ -95,7 +99,16 @@ def partition(pair):
   return (('_'.join(part), region) for part in partitions)
 
 # group objects to partitions
-part_regions = regions.flatMap(partition).groupByKey()
+part_regions = regions.flatMap(partition).groupByKey(numPartitions=num_partitions)
+
+mean = list()
+for part in part_regions.collect():
+  mean.append(len(list(part[1])))
+  print(part[0], len(list(part[1]))  )
+#print(mean)
+print("Avg num of element per partition =", sum(mean)/len(mean))
+# print("std =",numpy.std(mean))
+# print("mode =", stats.mode(mean))
 
 
 # ==== Execute Sweep Line ====
